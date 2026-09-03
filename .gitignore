@@ -1,6 +1,3 @@
-# Previously used local Strava credentials; never publish these.
-.env
-strava-token.json
 
 # Local editor and browser files
 .vscode/
