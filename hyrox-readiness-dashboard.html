@@ -6,16 +6,18 @@
 <section class="view" id="log"><div class="grid journal"><article class="card"><div class="head"><h2>Training journal</h2><button class="btn" id="saveNote">Save note</button></div><label class="field">Note<textarea id="noteText" placeholder="How did it feel? What would you change next time?"></textarea></label><div id="notes"></div></article><article class="card"><div class="head"><h2>Log an activity</h2><button class="btn" id="saveActivity">Add activity</button></div><div class="activity-form"><label class="field">Date<input type="date" id="actDate"></label><label class="field">Type<select id="actType"><option>Running</option><option>Cycling</option><option>Strength</option><option>HYROX</option><option>Other</option></select></label><label class="field">Distance (km)<input type="number" id="actDistance" min="0" step="0.1" placeholder="0"></label><label class="field">Duration (min)<input type="number" id="actDuration" min="0" placeholder="0"></label><span></span></div><label class="field" style="margin-top:10px">Activity note<input id="actNote" placeholder="Route, effort, what you completed…"></label><table><thead><tr><th>Date</th><th>Activity</th><th>Distance</th><th>Duration</th><th></th></tr></thead><tbody id="activities"></tbody></table></article></div><article class="card" style="margin-top:16px"><div class="head"><div><h2>Your saved data</h2><span class="label">Stored in this browser</span></div><div class="tools"><button class="btn light" id="exportData">Export backup</button><label class="btn light" for="importData">Import backup</label><input id="importData" type="file" accept="application/json" hidden><button class="btn danger" id="clearData">Clear saved data</button></div></div><p class="sub">Check-ins, rearranged sessions, activities and notes persist after refresh. Export a backup before changing browsers or devices.</p></article></section>
 </main><script>
 const $=s=>document.querySelector(s),store={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))};const base=[['Mon','S&C class','45 min strength','strength'],['Tue','Track intervals','6 × 800m controlled 5K','run'],['Wed','Run club','10–12 km at ~5:30/km','run'],['Thu','Easy / recovery','30–40 min easy or rest','hyrox'],['Fri','Run club','5–8 km at ~5:30/km','run'],['Sat','MTB','3–4h mostly Z2','ride'],['Sun','Easy run or coffee MTB','Choose one','ride']];let sessions=store.get('hyrox-sessions',base.map((x,i)=>({id:i,day:x[0],title:x[1],detail:x[2],kind:x[3],done:false}))),activities=store.get('hyrox-activities',[]),notes=store.get('hyrox-notes',[]);const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];function save(){store.set('hyrox-sessions',sessions);store.set('hyrox-activities',activities);store.set('hyrox-notes',notes)}
-function renderSessions(){sessions.forEach((s,i)=>s.day=days[i]);$('#agenda').innerHTML=sessions.map((s,i)=>`<div class="session ${s.kind} ${s.done?'done':''}" draggable="true" data-i="${i}"><span class="grip">⋮⋮</span><input class="check" type="checkbox" ${s.done?'checked':''} aria-label="Mark ${s.title} complete"><span class="day">${s.day}</span><span><strong>${s.title}</strong><small>${s.detail}</small></span><button class="tag ${s.done?'done':''}">${s.done?'Done':'Planned'}</button></div>`).join('');document.querySelectorAll('.session').forEach(c=>{let i=+c.dataset.i,toggle=()=>{sessions[i].done=!sessions[i].done;save();renderAll()};c.querySelector('.check').onchange=toggle;c.querySelector('.tag').onclick=toggle;c.ondragstart=e=>{c.classList.add('drag');e.dataTransfer.setData('text',i)};c.ondragend=()=>document.querySelectorAll('.session').forEach(x=>x.classList.remove('drag','over'));c.ondragover=e=>{e.preventDefault();c.classList.add('over')};c.ondragleave=()=>c.classList.remove('over');c.ondrop=e=>{e.preventDefault();let f=+e.dataTransfer.getData('text'),t=+c.dataset.i;if(f!==t){sessions.splice(t,0,sessions.splice(f,1)[0]);save();renderAll()}}})}
+function renderSessions(){sessions.forEach((s,i)=>s.day=days[i]);$('#agenda').innerHTML=sessions.map((s,i)=>`<div class="session ${s.kind} ${s.done?'done':''}" draggable="true" data-i="${i}"><div class="content-wrap"><span class="grip">⋮⋮</span><input class="check" type="checkbox" ${s.done?'checked':''} aria-label="Mark ${s.title} complete"><span class="day">${s.day}</span><span><strong>${s.title}</strong><small>${s.detail}</small></span><button class="tag ${s.done?'done':''}">${s.done?'Done':'Planned'}</button></div></div>`).join('');document.querySelectorAll('.session').forEach(c=>{let i=+c.dataset.i,toggle=()=>{sessions[i].done=!sessions[i].done;save();renderAll()};c.querySelector('.check').onchange=toggle;c.querySelector('.tag').onclick=toggle;c.ondragstart=e=>{c.classList.add('drag');e.dataTransfer.setData('text',i)};c.ondragend=()=>document.querySelectorAll('.session').forEach(x=>x.classList.remove('drag','over'));c.ondragover=e=>{e.preventDefault();c.classList.add('over')};c.ondragleave=()=>c.classList.remove('over');c.ondrop=e=>{e.preventDefault();let f=+e.dataTransfer.getData('text'),t=+c.dataset.i;if(f!==t){sessions.splice(t,0,sessions.splice(f,1)[0]);save();renderAll()}}})}
 function renderStats(){let now=Date.now(),week=activities.filter(a=>now-new Date(a.date+'T12:00:00')<604800000),run=week.filter(a=>a.type==='Running').reduce((n,a)=>n+a.distance,0),ride=week.filter(a=>a.type==='Cycling').reduce((n,a)=>n+a.distance,0),rideH=week.filter(a=>a.type==='Cycling').reduce((n,a)=>n+a.duration,0)/60,done=sessions.filter(s=>s.done).length;$('#completeCount').textContent=done+'/7';$('#runTotal').textContent=run.toFixed(1)+' km';$('#rideTotal').textContent=ride.toFixed(1)+' km';$('#adherence').textContent=Math.round(done/7*100)+'%';$('#runBar').style.width=Math.min(100,run/35*100)+'%';$('#rideBar').style.width=Math.min(100,rideH/4*100)+'%';$('#sessionBar').style.width=done/7*100+'%';$('#runTarget').textContent=run.toFixed(0)+'/35 km';$('#rideTarget').textContent=rideH.toFixed(1)+'/4 h';$('#sessionTarget').textContent=done+'/7'}
 function renderLog(){notes.sort((a,b)=>b.id-a.id);$('#notes').innerHTML=notes.map(n=>`<div class="entry"><time>${new Date(n.id).toLocaleString()}</time><p>${n.text.replace(/[&<>]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[x]))}</p><button class="btn danger" data-note="${n.id}">Delete</button></div>`).join('');document.querySelectorAll('[data-note]').forEach(b=>b.onclick=()=>{notes=notes.filter(n=>n.id!=b.dataset.note);save();renderLog()});activities.sort((a,b)=>b.date.localeCompare(a.date));$('#activities').innerHTML=activities.length?activities.map(a=>`<tr><td>${a.date}</td><td><b>${a.type}</b><br><span class="label">${a.note||''}</span></td><td>${a.distance?a.distance.toFixed(1)+' km':'—'}</td><td>${a.duration?a.duration+' min':'—'}</td><td><button class="btn danger" data-act="${a.id}">Delete</button></td></tr>`).join(''):'<tr><td colspan="5" class="empty">No activities logged yet.</td></tr>';document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{activities=activities.filter(a=>a.id!=b.dataset.act);save();renderAll()})}function renderAll(){renderSessions();renderStats();renderLog()}
 $('#saveNote').onclick=()=>{let t=$('#noteText').value.trim();if(t){notes.push({id:Date.now(),text:t});$('#noteText').value='';save();renderLog()}};$('#saveActivity').onclick=()=>{let date=$('#actDate').value;if(!date)return alert('Choose a date first.');activities.push({id:Date.now(),date,type:$('#actType').value,distance:+$('#actDistance').value||0,duration:+$('#actDuration').value||0,note:$('#actNote').value.trim()});$('#actDistance').value=$('#actDuration').value=$('#actNote').value='';save();renderAll()};$('#exportData').onclick=()=>{let blob=new Blob([JSON.stringify({sessions,activities,notes},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='hyrox-training-backup.json';a.click();URL.revokeObjectURL(a.href)};$('#importData').onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader;r.onload=()=>{try{let d=JSON.parse(r.result);if(!Array.isArray(d.sessions)||!Array.isArray(d.activities)||!Array.isArray(d.notes))throw 0;sessions=d.sessions;activities=d.activities;notes=d.notes;save();renderAll();alert('Backup restored.')}catch{alert('That backup file is not valid.')}};r.readAsText(f)};$('#clearData').onclick=()=>{if(confirm('Clear all check-ins, notes and activities saved in this browser?')){sessions=base.map((x,i)=>({id:i,day:x[0],title:x[1],detail:x[2],kind:x[3],done:false}));activities=[];notes=[];save();renderAll()}};document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelector('.tabs .active').classList.remove('active');document.querySelector('.view.active').classList.remove('active');b.classList.add('active');$('#'+b.dataset.view).classList.add('active')});
 const plan=[['Week 1','Aug 31 – Sep 6','Introduction + movement quality','S&C or 3-round HYROX substitute · optional 6×800m · 10–12km Wed · recovery Thu · Friday run · Z2 MTB · easy Sunday.'],['Week 2','Sep 7 – 13','Strength foundation','Strength substitute: squat, RDL, lunges, pull-ups, farmers, wall balls · 8×600m track · 4-round HYROX aerobic Thursday.'],['Week 3','Sep 14 – 20','Running after stations','5×1km track · HYROX rounds with ski, burpees and wall balls, then sleds, farmers and lunges.'],['Week 4','Sep 21 – 27','Deload','Light strength · 5×600m controlled · 8–10km easy · light 3-round HYROX · relaxed MTB.'],['Week 5','Sep 28 – Oct 4','Race-specific strength','4×1.2km track · race-specific 4-round HYROX with sleds, farmers, lunges and burpees.'],['Week 6','Oct 5 – 11','Longer race combinations','6×1km track · BIG HYROX sequence with ski, sleds, burpees, row, farmers, lunges and wall balls.'],['Week 7','Oct 12 – 18','Pro weights','Heavy strength · optional 10×400m · 5-round HYROX at/near Pro loads.'],['Week 8','Oct 19 – 25','Deload','No heavy/failure work · controlled 5×800m · 3-round HYROX · easy running and MTB.'],['Week 9','Oct 26 – Nov 1','Race simulation','5×1km track · controlled Thursday race simulation · very easy Friday and relaxed weekend.'],['Week 10','Nov 2 – 8','Peak week','3×2km threshold · key Thursday session at 60–75% race volume using race weights.'],['Week 11','Nov 9 – 15','Final hard week','6×800m · final hard HYROX with compromised running, row, farmers, lunges and wall balls.'],['Week 12','Nov 16 – 22','Taper','Reduce volume ~40% · light strength · 4×800m · easy 8km · HYROX primer.'],['Week 13','Nov 23 – 29','Race week 🏁','Rest/easy Monday · 4×400m primer Tuesday · easy/rest Wednesday · light primer Thursday · rest Friday · HYROX Pro Singles weekend.']];function showWeek(i){let w=plan[i];$('#weekTitle').textContent=w[0]+' · '+w[1];$('#weekFocus').textContent='Focus: '+w[2];$('#workouts').innerHTML=`<div class="workout"><b>Weekly outline<br><span class="label">${w[2]}</span></b><p>${w[3]}</p></div>`;document.querySelectorAll('.weeks button').forEach((b,n)=>b.classList.toggle('active',n===i))}$('#weeks').innerHTML=plan.map((w,i)=>`<button onclick="showWeek(${i})"><b>${w[0]}</b><small>${w[1]} · ${w[2]}</small></button>`).join('');showWeek(0);$('#actDate').value=new Date().toISOString().slice(0,10);$('#days').textContent=Math.max(0,Math.ceil((new Date('2026-11-28')-Date.now())/86400000))+' days to go';renderAll();
 </script><style>
 .session{cursor:pointer}.session .check,.session .tag,.session .grip{cursor:pointer}.session-detail-backdrop{position:fixed;inset:0;background:rgba(17,30,24,.48);display:grid;place-items:center;padding:18px;z-index:10}.session-detail{max-width:620px;width:100%;max-height:85vh;overflow:auto;background:#fffefa;border-radius:16px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.24)}.session-detail h2{font-size:25px;margin:3px 0 12px}.session-detail p{white-space:pre-line;color:#39463f}.session-detail .close{float:right;background:#edf2eb;color:#315721;border:0;border-radius:8px;padding:7px 10px;font-weight:800;cursor:pointer}
-</style><script>
-const fullDetails={
-  'S&C class':`Option A — S&C class
+</style>
+<!-- Static text moved out of inline JS for maintainability -->
+<script id="static-fullDetails" type="text/plain">
+{
+  'S&C class': `Option A — S&C class
 45 min. Attend your normal class and do not add extra work.
 
 Option B — HYROX / strength substitute
@@ -28,32 +30,38 @@ Option B — HYROX / strength substitute
 • 60 sec rest
 
 Then: sled push 4 × 12.5 m; sled pull 4 × 12.5 m; farmers carry 3 × 50 m; wall balls 3 × 15.`,
-  'Track intervals':`Optional track session
+  'Track intervals': `Optional track session
 • 15 min warm-up
 • 6 × 800 m at controlled 5K effort
 • 2 min jog recovery between repeats
 • Cool down
 
 If your S&C class is on Tuesday, skip this session.`,
-  'Run club':`Wednesday: 10–12 km at approximately 5:30/km. Keep it controlled, not a race.
+  'Run club': `Wednesday: 10–12 km at approximately 5:30/km. Keep it controlled, not a race.
 
 Friday: 5–8 km at approximately 5:30/km.`,
-  'Easy / recovery':`30–40 min easy running OR complete rest.
+  'Easy / recovery': `30–40 min easy running OR complete rest.
 
 Choose the option that leaves you ready for Friday running and Saturday MTB.`,
-  'MTB':`3–4 hours, mostly Zone 2.
+  'MTB': `3–4 hours, mostly Zone 2.
 
 Keep this aerobic and controlled rather than turning it into a race.`,
-  'Easy run or coffee MTB':`Choose one:
+  'Easy run or coffee MTB': `Choose one:
 • 40–50 min easy run; OR
 • 60–90 min chilled MTB coffee ride.
 
 Never make Sunday a secret race.`
-};
+}
+</script>
+<script>
+const _staticFD = document.getElementById('static-fullDetails')?.textContent || '{}';
+let fullDetails;
+try { fullDetails = Function('return ' + _staticFD)(); } catch (e) { console.error('Failed to parse static-fullDetails', e); fullDetails = {}; }
 function openSessionDetail(session){const detail=fullDetails[session.title]||session.detail;const safe=detail.replace(/[&<>]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[x]));const box=document.createElement('div');box.className='session-detail-backdrop';box.innerHTML=`<article class="session-detail" role="dialog" aria-modal="true"><button class="close">Close</button><div class="label">${session.day} · Week 1</div><h2>${session.title}</h2><p>${safe}</p></article>`;box.onclick=e=>{if(e.target===box||e.target.classList.contains('close'))box.remove()};document.body.append(box)}
 $('#agenda').addEventListener('click',e=>{if(e.target.matches('.check,.tag,.grip'))return;const card=e.target.closest('.session');if(card)openSessionDetail(sessions[+card.dataset.i])});
-</script><script>
-const fullPlan=[
+</script>
+<script id="static-fullPlan" type="text/plain">
+[
 ['Introduction + movement quality',[['S&C class','Option A: 45 min normal S&C class; add no extra work.\n\nOption B: 3 rounds — 500m SkiErg, 10 squats, 10 burpees, 20 walking lunges, 500m row, then 60 sec rest. Then sled push 4×12.5m, sled pull 4×12.5m, farmers carry 3×50m, wall balls 3×15.','strength'],['Track — optional','15 min warm-up; 6×800m at controlled 5K effort; 2 min jog recovery; cool down. If S&C is Tuesday, skip track.','run'],['Run club','10–12 km at ~5:30/km. Controlled, not a race.','run'],['Easy / recovery','30–40 min easy OR rest.','hyrox'],['Run club','5–8 km at ~5:30/km.','run'],['MTB','3–4 hours, mostly Z2.','ride'],['Easy run or coffee MTB','40–50 min easy run OR 60–90 min chilled MTB coffee ride.','ride']]],
 ['Strength foundation',[['S&C or HYROX strength','S&C class OR substitute: squat 4×6; Romanian deadlift 3×8; walking lunges 3×10/leg; pull-ups/lat pulldown 3×8; farmers carry 4×50m; wall balls 3×20.','strength'],['Track','8×600m at 5K effort; 90 sec recovery. Skip if S&C is Tuesday.','run'],['Run','10–12 km at ~5:30/km.','run'],['HYROX aerobic','4 rounds: 800m run; 500m SkiErg; 10 burpee broad jumps; 15 wall balls; 20 lunges. Rest 2 min between rounds.','hyrox'],['Run','6–8 km at ~5:30/km.','run'],['MTB','3–4 h Z2.','ride'],['Easy run or coffee MTB','45–60 min easy run OR 60–90 min coffee MTB.','ride']]],
 ['Running after stations',[['S&C or HYROX strength','Front squat 4×5; RDL 3×6; Bulgarian split squat 3×8/leg; row/pull-up 3×8; farmers 4×50m; wall balls 4×15.','strength'],['Track','5×1 km at 10K–5K effort; 2 min recovery.','run'],['Run','10–12 km at ~5:30/km.','run'],['HYROX','4 rounds: 1 km run → 500m Ski → 10 burpees → 20 wall balls. Then sled push 4×25m, sled pull 4×25m, farmers 100m, lunges 50m. Focus on running immediately after stations.','hyrox'],['Run','5–8 km at ~5:30/km.','run'],['MTB','3–4 h.','ride'],['Easy run or coffee MTB','45–60 min easy run OR chilled coffee MTB.','ride']]],
@@ -66,8 +74,36 @@ const fullPlan=[
 ['Peak week',[['S&C or strength substitute','Squat 3×4; RDL 3×5; farmers 3×75m; lunges 3×20m; wall balls 3×20. No failure.','strength'],['Track','3×2 km threshold; 3 min recovery.','run'],['Run','10 km at ~5:30/km.','run'],['KEY HYROX session','About 60–75% race volume: 1km run; 1,000m Ski; 1km run; 50m sled push; 1km run; 50m sled pull; 1km run; 80m burpees; 1km run; 1,000m row; 100m farmers; 50m lunges; 75 wall balls. Use race weights.','hyrox'],['Easy run','5–6 km easy.','run'],['MTB','2.5–3 h Z2.','ride'],['Easy run or coffee MTB','45 min OR relaxed coffee MTB.','ride']]],
 ['Final hard week',[['S&C or HYROX strength','Keep moderate: squat 3×4; RDL 3×5; farmers 3×50m; lunges 2×25m; wall balls 3×20.','strength'],['Track','6×800m at 5K–10K effort; plenty of recovery.','run'],['Run','8–10 km at ~5:30/km.','run'],['FINAL HARD HYROX','4 rounds: 1km run; 500m Ski; 25m sled push; 25m sled pull; 20 wall balls. Then 1km run; 500m row; 100m farmers; 50m lunges. Finish 20–30 wall balls after 1km running.','hyrox'],['Easy run','5 km easy.','run'],['MTB','2–2.5 h relaxed.','ride'],['Easy run or coffee MTB','40–50 min OR coffee MTB.','ride']]],
 ['Taper',[['S&C or light substitute','Attend S&C at 60–70%, no PBs/failure; OR squat 2×5, RDL 2×6, farmers 2×50m, wall balls 2×15, mobility.','strength'],['Track','4×800m around race/10K effort; plenty of recovery.','run'],['Easy run','8 km easy.','run'],['HYROX primer','1km run; 500m Ski; 25m sled push; 1km run; 25m sled pull; 1km run; 500m row; 1km run; 50 wall balls. Easy and sharp.','hyrox'],['Easy run','5 km very easy.','run'],['MTB','90–120 min easy.','ride'],['Easy run or coffee MTB','30–40 min OR 60 min relaxed coffee MTB.','ride']]],
-['Race week 🏁',[['Rest or easy run','Rest OR 25–30 min very easy. No strength.','strength'],['Run primer','10 min easy; 4×400m at intended HYROX pace; full recovery; cool down. Total 25–30 min.','run'],['Easy run or rest','Do not do normal run club: 5–6 km very easy OR rest.','run'],['HYROX primer','30–40 min: 500m Ski; 10 wall balls; 10 burpees; 20m sled push; 20m sled pull; 500m easy row; 10 lunges; 5–10 min easy run. Nothing should make you sore.','hyrox'],['Rest','Walk, mobility, hydrate, fuel and sleep.','run'],['HYROX Pro Singles','Race day.','ride'],['HYROX Pro Singles','Race day.','ride']]]];
+['Race week 🏁',[['Rest or easy run','Rest OR 25–30 min very easy. No strength.','strength'],['Run primer','10 min easy; 4×400m at intended HYROX pace; full recovery; cool down. Total 25–30 min.','run'],['Easy run or rest','Do not do normal run club: 5–6 km very easy OR rest.','run'],['HYROX primer','30–40 min: 500m Ski; 10 wall balls; 10 burpees; 20m sled push; 20m sled pull; 500m easy row; 10 lunges; 5–10 min easy run. Nothing should make you sore.','hyrox'],['Rest','Walk, mobility, hydrate, fuel and sleep.','run'],['HYROX Pro Singles','Race day.','ride'],['HYROX Pro Singles','Race day.','ride']]]
+]
+</script>
+<script>
+const _staticFP = document.getElementById('static-fullPlan')?.textContent || '[]';
+try { const parsed = Function('return ' + _staticFP)(); if(Array.isArray(parsed)) fullPlan = parsed; } catch (e) { console.error('Failed to parse static-fullPlan', e); }
+// Attempt to load an external plain-text program (Hyrox program.txt) and parse it into the
+// same data structures used by the page. Falls back to the embedded `fullPlan` above.
+async function loadExternalProgram(){try{const res=await fetch('./Hyrox program.txt');if(!res.ok)throw 0;const txt=await res.text();const weeks=[];const detailsMap={};
+  // Split into WEEK blocks
+  const wkRe=/WEEK\s*(\d+)\s*—\s*([^\n\r]+)\n([\s\S]*?)(?=\nWEEK\s*\d+\s*—|$)/gi;let m;while((m=wkRe.exec(txt))){const wnum=Number(m[1])-1;const header=m[2].trim();const body=m[3].trim();const lines=body.split(/\r?\n/);
+    const dayBlocks=[];let current=null;for(const line of lines){const dayMatch=line.match(/^([A-Za-z]{3})\s*\|\s*(.+)$/);if(dayMatch){if(current)dayBlocks.push(current);current={day:dayMatch[1],title:dayMatch[2].trim(),detail:''};}else if(current){if(line.trim()==='')continue;current.detail += (current.detail?"\n":"") + line.trim();}}
+    if(current)dayBlocks.push(current);
+    // Ensure 7 entries (Mon..Sun). If fewer, pad with placeholders.
+    const daysOrder=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];const sessArr=[];for(let i=0;i<7;i++){const d=daysOrder[i];const found=dayBlocks.find(x=>x.day===d);if(found){sessArr.push([found.title,found.detail,guessKind(found.title)])}else{sessArr.push([d,'Rest / no entry','run'])}}
+    weeks[wnum]=[header,sessArr];
+    // collect details for quick popups
+    dayBlocks.forEach((b,i)=>{detailsMap[b.title]=b.detail});}
+  // Fill missing weeks with fallback if any
+  for(let i=0;i<13;i++)if(!weeks[i])weeks[i]=[fullPlan[i]&&fullPlan[i][0]||`Week ${i+1}`,fullPlan[i]&&fullPlan[i][1]||[]];
+  fullPlan=weeks.map((w,i)=>[w[0],w[1]]);
+  // Merge details into fullDetails (static-first, then external overrides)
+  fullDetails = { ...fullDetails, ...detailsMap };
+  console.info('Loaded Hyrox program.txt');
+}catch(err){console.info('No external program file loaded, using embedded plan.')} }
+function guessKind(title){title=title.toLowerCase();if(/run|track|km|km\b/.test(title))return 'run';if(/mtb|ride|cycle|bike/.test(title))return 'ride';if(/sled|hyrox|burpee|wall ball|wall balls|ski|farmers|row|farmers/.test(title))return 'hyrox';if(/s&c|strength|squat|deadlift|rdl|pull-up|pullups|pullups/.test(title))return 'strength';return 'run'}
+
 const startDate=new Date('2026-08-31T00:00:00');let chosenWeek=Math.max(0,Math.min(12,Math.floor((new Date()-startDate)/604800000)));const doneKey='hyrox-plan-completions';let completions=store.get(doneKey,{});const dashboardCard=$('#agenda').closest('.card');dashboardCard.querySelector('.head').innerHTML=`<div><h2 id="plannerWeekTitle"></h2><div class="label" id="plannerWeekFocus"></div></div><div class="tools"><button class="btn light" id="prevWeek">←</button><button class="btn light" id="todayWeek">Current</button><button class="btn light" id="nextWeek">→</button></div>`;
+// Try loading the external program, then render planner
+loadExternalProgram().then(()=>{renderWeekPlanner();renderFullProgram()}).catch(()=>{renderWeekPlanner();renderFullProgram()});
 function planSessions(w){return fullPlan[w][1].map((x,i)=>({id:`${w}-${i}`,day:days[i],title:x[0],detail:x[1],kind:x[2],done:!!completions[`${w}-${i}`]}))}function renderWeekPlanner(){sessions=planSessions(chosenWeek);$('#plannerWeekTitle').textContent=`Week ${chosenWeek+1} · ${['Aug 31','Sep 7','Sep 14','Sep 21','Sep 28','Oct 5','Oct 12','Oct 19','Oct 26','Nov 2','Nov 9','Nov 16','Nov 23'][chosenWeek]} – ${['Sep 6','Sep 13','Sep 20','Sep 27','Oct 4','Oct 11','Oct 18','Oct 25','Nov 1','Nov 8','Nov 15','Nov 22','Nov 29'][chosenWeek]}`;$('#plannerWeekFocus').textContent=fullPlan[chosenWeek][0]+' · click a session for its full prescription';$('#agenda').innerHTML=sessions.map((s,i)=>`<div class="session ${s.kind} ${s.done?'done':''}" data-i="${i}"><input class="check" type="checkbox" ${s.done?'checked':''}><span class="day">${s.day}</span><span><strong>${s.title}</strong><small>${s.detail.split('\n')[0]}</small></span><button class="tag ${s.done?'done':''}">${s.done?'Done':'Planned'}</button></div>`).join('');document.querySelectorAll('#agenda .session').forEach(c=>{let i=+c.dataset.i,toggle=()=>{let id=sessions[i].id;completions[id]=!completions[id];store.set(doneKey,completions);renderWeekPlanner();renderStats()};c.querySelector('.check').onclick=e=>{e.stopPropagation();toggle()};c.querySelector('.tag').onclick=e=>{e.stopPropagation();toggle()};c.onclick=()=>openSessionDetail(sessions[i])});}
 function renderFullProgram(){ $('#weeks').innerHTML=fullPlan.map((w,i)=>`<button data-w="${i}"><b>Week ${i+1}</b><small>${w[0]}</small></button>`).join('');document.querySelectorAll('#weeks button').forEach(b=>b.onclick=()=>{let w=+b.dataset.w;$('#weekTitle').textContent=`Week ${w+1}`;$('#weekFocus').textContent='Focus: '+fullPlan[w][0];$('#workouts').innerHTML=fullPlan[w][1].map((x,i)=>`<div class="workout"><b>${days[i]}<br><span class="label">${x[0]}</span></b><p>${x[1]}</p></div>`).join('');document.querySelectorAll('#weeks button').forEach(x=>x.classList.toggle('active',x===b))});document.querySelector(`#weeks button[data-w="${chosenWeek}"]`).click()}
 $('#prevWeek').onclick=()=>{chosenWeek=Math.max(0,chosenWeek-1);renderWeekPlanner()};$('#nextWeek').onclick=()=>{chosenWeek=Math.min(12,chosenWeek+1);renderWeekPlanner()};$('#todayWeek').onclick=()=>{chosenWeek=Math.max(0,Math.min(12,Math.floor((new Date()-startDate)/604800000)));renderWeekPlanner()};renderWeekPlanner();renderFullProgram();
@@ -78,17 +114,54 @@ const originalRenderAll=renderAll;renderAll=()=>{originalRenderAll();renderWeekP
 $('#agenda').addEventListener('click',e=>{if(e.target.matches('.check,.tag'))return;const card=e.target.closest('.session');if(card){e.stopImmediatePropagation();openSessionDetail(sessions[+card.dataset.i])}},true);
 </script><style>
 /* The automatic-week cards have four content areas: completion, day, copy and actions. */
-#agenda .session{grid-template-columns:26px 62px minmax(0,1fr) auto;min-height:74px;align-items:center}
+#agenda .session{display:block;position:relative;min-height:74px}
 #agenda .session small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .session-actions{display:flex;align-items:center;gap:5px}.delete-session{width:28px;height:28px;border:0;border-radius:7px;background:#f5e8e4;color:#a34b3a;font-size:19px;line-height:1;cursor:pointer}.delete-session:hover{background:#f8cfc5}
-.add-session{white-space:nowrap}@media(max-width:540px){#agenda .session{grid-template-columns:25px minmax(0,1fr) auto}#agenda .session .day{display:none}}
+.add-session{white-space:nowrap}
+@media(max-width:540px){
+  #agenda .session{grid-template-columns:25px minmax(0,1fr) auto}
+  #agenda .session .day{display:none}
+  #agenda .session .content-wrap{grid-template-columns:36px 1fr auto}
+  #agenda .session .delete-session{transform:translateY(-50%) translateX(0);right:10px}
+  #agenda .session.slide .content-wrap{transform:none}
+}
+/* Swipe-to-reveal delete styling */
+#agenda .session{position:relative;overflow:hidden}
+#agenda .session .content-wrap{display:grid;grid-template-columns:26px 62px minmax(0,1fr) auto;gap:8px;align-items:center;transition:transform .18s ease}
+#agenda .session .delete-session{position:absolute;right:10px;top:50%;transform:translateY(-50%) translateX(110%);transition:transform .18s ease;z-index:2}
+#agenda .session.slide .content-wrap{transform:translateX(-80px)}
+#agenda .session.slide .delete-session{transform:translateY(-50%) translateX(0)}
 </style><script>
 const additionsKey='hyrox-custom-sessions',hiddenKey='hyrox-hidden-sessions';let customSessions=store.get(additionsKey,{}),hiddenSessions=store.get(hiddenKey,{});
 const originalPlanSessions=planSessions;planSessions=w=>[...originalPlanSessions(w).filter(s=>!(hiddenSessions[w]||[]).includes(s.id)),...(customSessions[w]||[])];
 const baseWeekRender=renderWeekPlanner;renderWeekPlanner=()=>{baseWeekRender();decorateWeekPlanner()};
 function decorateWeekPlanner(){
-  const header=$('#agenda').closest('.card').querySelector('.head .tools');if(!$('#addSession')){const add=document.createElement('button');add.id='addSession';add.className='btn add-session';add.textContent='+ Session';add.onclick=openAddSession;header.append(add)}
-  document.querySelectorAll('#agenda .session').forEach(card=>{const tag=card.querySelector('.tag'),actions=document.createElement('span'),del=document.createElement('button');actions.className='session-actions';del.className='delete-session';del.title='Delete this session';del.setAttribute('aria-label','Delete this session');del.textContent='×';tag.before(actions);actions.append(tag,del);del.onclick=e=>{e.stopPropagation();const s=sessions[+card.dataset.i];if(!confirm(`Delete “${s.title}” from this week?`))return;if(String(s.id).startsWith('custom-'))customSessions[chosenWeek]=(customSessions[chosenWeek]||[]).filter(x=>x.id!==s.id);else hiddenSessions[chosenWeek]=[...(hiddenSessions[chosenWeek]||[]),s.id];store.set(additionsKey,customSessions);store.set(hiddenKey,hiddenSessions);renderWeekPlanner();renderStats()}})
+  const header=$('#agenda').closest('.card').querySelector('.head .tools');
+  if(!$('#addSession')){const add=document.createElement('button');add.id='addSession';add.className='btn add-session';add.textContent='+ Session';add.onclick=openAddSession;header.append(add)}
+  // (Dashboard add button removed to avoid duplicate +Session controls)
+
+  document.querySelectorAll('#agenda .session').forEach(card=>{
+    // ensure content is wrapped so swipe transform can be applied
+    if(!card.querySelector('.content-wrap')){
+      const inner=document.createElement('div');inner.className='content-wrap';
+      while(card.firstChild)inner.appendChild(card.firstChild);
+      card.appendChild(inner);
+    }
+    const tag=card.querySelector('.tag'),actions=document.createElement('span'),del=document.createElement('button');
+    actions.className='session-actions';del.className='delete-session';del.title='Delete this session';del.setAttribute('aria-label','Delete this session');del.textContent='×';
+    // insert actions before the tag so layout remains consistent
+    if(tag)tag.before(actions);actions.append(tag,del);
+    del.onclick=e=>{e.stopPropagation();const s=sessions[+card.dataset.i];if(!confirm(`Delete “${s.title}” from this week?`))return;if(String(s.id).startsWith('custom-'))customSessions[chosenWeek]=(customSessions[chosenWeek]||[]).filter(x=>x.id!==s.id);else hiddenSessions[chosenWeek]=[...(hiddenSessions[chosenWeek]||[]),s.id];store.set(additionsKey,customSessions);store.set(hiddenKey,hiddenSessions);renderWeekPlanner();renderStats()};
+
+    // pointer/touch swipe handling to reveal delete
+    let startX=null,locked=false;
+    const onDown=(e)=>{startX=(e.touches?e.touches[0].clientX:e.clientX);locked=false;card.style.transition='none'};
+    const onMove=(e)=>{if(startX===null)return;const x=(e.touches?e.touches[0].clientX:e.clientX);const dx=x-startX;if(dx<-10){card.classList.add('dragging')}if(dx<-40){card.classList.add('slide');locked=true}else if(dx>40){card.classList.remove('slide');locked=true}};
+    const onUp=()=>{startX=null;card.classList.remove('dragging');card.style.transition='';};
+    card.removeEventListener('touchstart',card._s);card.removeEventListener('touchmove',card._m);card.removeEventListener('touchend',card._u);card.removeEventListener('mousedown',card._s);card.removeEventListener('mousemove',card._m);card.removeEventListener('mouseup',card._u);
+    card._s=onDown;card._m=onMove;card._u=onUp;
+    card.addEventListener('touchstart',onDown,{passive:true});card.addEventListener('touchmove',onMove,{passive:true});card.addEventListener('touchend',onUp);card.addEventListener('mousedown',onDown);card.addEventListener('mousemove',onMove);card.addEventListener('mouseup',onUp);
+  })
 }
 function openAddSession(){const box=document.createElement('div');box.className='session-detail-backdrop';box.innerHTML=`<article class="session-detail" role="dialog" aria-modal="true"><button class="close">Close</button><div class="label">Add to Week ${chosenWeek+1}</div><h2>New session</h2><label class="field">Day<select id="newDay">${days.map(d=>`<option>${d}</option>`).join('')}</select></label><label class="field">Session name<input id="newTitle" placeholder="e.g. Mobility"></label><label class="field">Type<select id="newKind"><option value="run">Running</option><option value="ride">Cycling</option><option value="strength">Strength</option><option value="hyrox">HYROX</option></select></label><label class="field">Session details<textarea id="newDetail" placeholder="Your prescription or note"></textarea></label><button class="btn" id="saveNewSession">Add session</button></article>`;box.onclick=e=>{if(e.target===box||e.target.classList.contains('close'))box.remove()};document.body.append(box);$('#saveNewSession').onclick=()=>{const title=$('#newTitle').value.trim(),detail=$('#newDetail').value.trim();if(!title||!detail)return alert('Add a session name and details.');const day=$('#newDay').value;const item={id:'custom-'+Date.now(),day,title,detail,kind:$('#newKind').value,done:false};(customSessions[chosenWeek]||=[]).push(item);store.set(additionsKey,customSessions);box.remove();renderWeekPlanner();renderStats()}}
 renderWeekPlanner();
